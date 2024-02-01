@@ -1,10 +1,8 @@
 ﻿using Microservice_VolunTrack.Domain;
+using Microservice_VolunTrack.Domain.Models;
 using Microservice_VolunTrack.Infraestructure;
-using Microservice_VolunTrack.Infraestructure.RabbitMQ;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+using System.ComponentModel.DataAnnotations;
 using System.Threading.Tasks;
 
 namespace Microservice_VolunTrack.Application
@@ -14,19 +12,25 @@ namespace Microservice_VolunTrack.Application
         private readonly IDatabaseManager _databaseManager;
         private readonly IMessagePublisher _messagePublisher;
         private readonly IFormHandlerFactory _formHandlerFactory;
+        private readonly ApiGatewayClient _apiGatewayClient;
 
-        public MessageProcessor(IDatabaseManager databaseManager, IMessagePublisher messagePublisher, IFormHandlerFactory formHandlerFactory)
+        public MessageProcessor(
+            IDatabaseManager databaseManager,
+            IMessagePublisher messagePublisher,
+            IFormHandlerFactory formHandlerFactory,
+            ApiGatewayClient apiGatewayClient) // Cambio aquí, inyecta la instancia ya creada de ApiGatewayClient
         {
-            _databaseManager = databaseManager;
-            _messagePublisher = messagePublisher;
-            _formHandlerFactory = formHandlerFactory;
+            _databaseManager = databaseManager ?? throw new ArgumentNullException(nameof(databaseManager));
+            _messagePublisher = messagePublisher ?? throw new ArgumentNullException(nameof(messagePublisher));
+            _formHandlerFactory = formHandlerFactory ?? throw new ArgumentNullException(nameof(formHandlerFactory));
+            _apiGatewayClient = apiGatewayClient ?? throw new ArgumentNullException(nameof(apiGatewayClient));
         }
 
-        public void ProcessMessage(string message)
+        public async Task ProcessMessage(string message)
         {
             try
             {
-                // Dividir el mensaje en partes (formulario, idUsuario)
+                // Dividir el mensaje en partes (tipo de formulario, id de usuario)
                 var messageParts = message.Split(',');
                 if (messageParts.Length != 2)
                 {
@@ -36,23 +40,32 @@ namespace Microservice_VolunTrack.Application
                 var formType = messageParts[0].Trim();
                 var userId = int.Parse(messageParts[1].Trim());
 
-                // Obtener el manejador adecuado para el tipo de formulario
-                var formHandler = _formHandlerFactory.GetHandler(formType);
-                if (formHandler == null)
+                // Comprobar si el tipo de formulario es "PrimerFormulario" y el ID de usuario es 2
+                if (formType == "PrimerFormulario")
                 {
-                    throw new InvalidOperationException($"No se encontró un manejador para el tipo de formulario: {formType}");
+                    // Llamar a la API para obtener la lista de usuarios
+                    var usuarios = await _apiGatewayClient.GetAsync<List<Usuario>>("listarUsuarios");
+
+                    // Encontrar al usuario con el ID especificado
+                    var usuario = usuarios.FirstOrDefault(u => u.IdUsuario == userId);
+                    if (usuario != null)
+                    {
+                        // Aquí tienes el nombre del usuario y puedes hacer lo que necesites con él
+                        var nombreUsuario = usuario.Nombre;
+                        _messagePublisher.PublishMessage(nombreUsuario);
+                        // Por ejemplo, almacenar el nombre en una variable
+                        // Esta es una variable local; deberás decidir cómo quieres utilizarla en tu aplicación
+                    }
                 }
-
-                // Procesar el formulario
-                var result = formHandler.Handle(userId);
-
-                // Publicar el resultado
-                _messagePublisher.PublishMessage($"Resultado procesado para el usuario {userId}: {result}");
+                else
+                {
+                    // Manejar otros tipos de formularios o IDs de usuario
+                }
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Error al procesar el mensaje: {ex.Message}");
-                // Aquí podrías manejar errores, como reintentar el procesamiento, registrar errores, etc.
+                // Manejo de errores adecuado
             }
         }
     }

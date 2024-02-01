@@ -10,8 +10,8 @@ namespace Microservice_VolunTrack.Infraestructure.RabbitMQ
     public class MessagePublisher : IMessagePublisher
     {
         private readonly string _hostname = "localhost"; // Ajusta según tu configuración de RabbitMQ
-        private readonly string _exchangeName = "exchangeName"; // Ajusta según tu configuración de RabbitMQ
-        private readonly string _routingKey = "routingKey"; // Ajusta según tu configuración de RabbitMQ
+        private readonly string _exchangeName = "testTopic"; // Ajusta según tu configuración de RabbitMQ
+        private readonly string _routingKey = "resultados"; // Ajusta según tu configuración de RabbitMQ
 
         public void PublishMessage(string message)
         {
@@ -19,7 +19,8 @@ namespace Microservice_VolunTrack.Infraestructure.RabbitMQ
             using (var connection = factory.CreateConnection())
             using (var channel = connection.CreateModel())
             {
-                channel.ExchangeDeclare(exchange: _exchangeName, type: "direct", durable: true);
+                channel.ExchangeDeclare(exchange: _exchangeName, type: "topic", durable: true);
+
 
                 var body = Encoding.UTF8.GetBytes(message);
 

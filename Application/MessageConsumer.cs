@@ -10,7 +10,7 @@ namespace Microservice_VolunTrack.Application
     {
         private readonly MessageProcessor _messageProcessor;
         private readonly string _hostname = "localhost"; // Ajusta según tu configuración de RabbitMQ
-        private readonly string _queueName = "notificacionesMail"; // Ajusta según la cola que desees consumir
+        private readonly string _queueName = "QueueFormulario"; // Ajusta según la cola que desees consumir
         private readonly string _exchangeName = "testTopic"; // Ajusta según tu intercambio
         private readonly string _routingKey = "notificaciones"; // Ajusta según el routing key que desees consumir
         private IConnection _connection;
@@ -28,7 +28,8 @@ namespace Microservice_VolunTrack.Application
             {
                 HostName = _hostname,
                 UserName = "guest",
-                Password = "guest"
+                Password = "guest",
+                Port = 5672
             };
 
             _connection = factory.CreateConnection();
